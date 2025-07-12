@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+.env
+
+# API Keys and sensitive data
+.env
+*.key
+config.ini
+secrets.json
+
+# Large data files
+*.csv
+*.xlsx
+*.xls
+data/raw/
+*.db
+*.sqlite
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
