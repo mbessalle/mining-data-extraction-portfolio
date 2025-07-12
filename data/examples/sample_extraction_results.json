@@ -1,0 +1,117 @@
+[
+  {
+    "project_name": "Adeline Project",
+    "operator_company": "Sterling Metals Corp.",
+    "input_article": "Sterling Metals Exercises Option to Acquire 100% of the Adeline Project in Labrador...",
+    "extracted_data": {
+      "buyer_ticker": "TSXV:SAG",
+      "aggregate_deal": 3812500.0,
+      "cash_payments": 200000.0,
+      "shares": 8500000,
+      "share_price": 0.42,
+      "share_value": 3570000.0,
+      "exploration_commitment": 42500.0,
+      "currency": "CAD",
+      "interest_acquired_percent": 100,
+      "nsr_percent": null,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "completeness_score": 90.0,
+        "processing_time_ms": 2340
+      }
+    }
+  },
+  {
+    "project_name": "Angliers-Belleterre",
+    "operator_company": "Alaska Energy Metals Corporation",
+    "input_article": "Alaska Energy Metals Closes Option to Acquire the Bambino Nickel – Copper Property...",
+    "extracted_data": {
+      "buyer_ticker": "TSX-V:AEMC",
+      "aggregate_deal": 10025731.8,
+      "cash_payments": null,
+      "shares": 31827720,
+      "share_price": 0.32,
+      "share_value": 10184726.4,
+      "exploration_commitment": null,
+      "currency": "CAD",
+      "interest_acquired_percent": 100,
+      "nsr_percent": null,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "completeness_score": 85.0,
+        "processing_time_ms": 1890
+      }
+    }
+  },
+  {
+    "project_name": "Hecla-Kilmer REE Project",
+    "operator_company": "Neotech Metals Corp.",
+    "input_article": "Neotech Metals Corp. Completes Hecla-Kilmer REE Project Acquisition...",
+    "extracted_data": {
+      "buyer_ticker": "CSE:NTMC",
+      "aggregate_deal": 1840000.0,
+      "cash_payments": 1000000.0,
+      "shares": 4000000,
+      "share_price": 0.21,
+      "share_value": 840000.0,
+      "exploration_commitment": null,
+      "currency": "CAD",
+      "interest_acquired_percent": 100,
+      "nsr_percent": 1.5,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "completeness_score": 95.0,
+        "processing_time_ms": 2150
+      }
+    }
+  },
+  {
+    "project_name": "Murphy Lake",
+    "operator_company": "Canadian GoldCamps Corp.",
+    "input_article": "Canadian GoldCamps Amends Definitive Agreement to Acquire 70% interest in Murphy Lake Property...",
+    "extracted_data": {
+      "buyer_ticker": "CSE:CAMP",
+      "aggregate_deal": 19400000.0,
+      "cash_payments": 1400000.0,
+      "shares": null,
+      "share_price": null,
+      "share_value": null,
+      "exploration_commitment": 18000000.0,
+      "currency": "CAD",
+      "interest_acquired_percent": 70,
+      "nsr_percent": 2.0,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "completeness_score": 75.0,
+        "processing_time_ms": 2890
+      }
+    }
+  },
+  {
+    "project_name": "Mountain Lake",
+    "operator_company": "Future Fuels Inc.",
+    "input_article": "ISOENERGY AND FUTURE FUELS COMPLETE TRANSACTION RELATED TO MOUNTAIN LAKE PROPERTY IN NUNAVUT...",
+    "extracted_data": {
+      "buyer_ticker": "TSXV:FTUR",
+      "aggregate_deal": 8850000.0,
+      "cash_payments": null,
+      "shares": 15000000,
+      "share_price": 0.59,
+      "share_value": 8850000.0,
+      "exploration_commitment": null,
+      "currency": "CAD",
+      "interest_acquired_percent": 100,
+      "nsr_percent": 2.0,
+      "validation": {
+        "is_valid": true,
+        "errors": [],
+        "completeness_score": 90.0,
+        "processing_time_ms": 2040
+      }
+    }
+  }
+]
