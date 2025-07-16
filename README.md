@@ -1,6 +1,6 @@
 # Mining Data Extraction & Analysis Portfolio
 
-A comprehensive data mining and extraction system demonstrating advanced web scraping, AI-powered financial data extraction, and structured data processing capabilities for the mining industry.
+A comprehensive data mining and extraction system using prompt and context engineering, demonstrating advanced web scraping, AI-powered financial data extraction, and structured data processing capabilities for the mining industry.
 
 ## 🎯 Project Overview
 
@@ -71,23 +71,42 @@ This portfolio showcases a sophisticated data mining pipeline that extracts, pro
 
 ```
 mining-data-extraction-portfolio/
-├── README.md                 # This file
-├── src/                     # Core extraction scripts
-│   ├── scrapers/           # Web scraping modules
-│   ├── processors/         # AI data processing
-│   └── validators/         # Data validation scripts
-├── data/                   # Sample datasets
-│   ├── raw/               # Unprocessed source data
-│   ├── processed/         # Structured output data
-│   └── examples/          # Sample data files
-├── docs/                  # Technical documentation
-│   ├── methodology.md     # Data extraction approach
-│   ├── api-usage.md      # AI integration details
-│   └── validation.md     # Quality assurance process
-├── tools/                # Utility scripts
-│   ├── converters/       # Format conversion tools
-│   └── analyzers/        # Data analysis scripts
-└── tests/               # Unit and integration tests
+├── README.md                           # Project overview
+├── src/                               # Core AI extraction system
+│   ├── auto_update_financials.py     # Main AI-powered extraction script
+│   └── processors/                    # AI processing modules
+│       └── financial_extractor.py    # Google Gemini API integration
+├── data/                             # Complete data pipeline
+│   ├── input/                        # Original Excel source file
+│   │   └── Canada Proj Acquisitions-newsroom-202536 AP.xlsx
+│   ├── raw_scraped_data_sample/     # Sample of 701 scraped projects (10 shown)
+│   │   └── [Project_Name]/          # Individual project directories
+│   │       ├── article_id.json     # Article metadata
+│   │       ├── article_id.txt      # Raw article text
+│   │       └── results_Project.json # Extracted summaries
+│   ├── structured_output_sample/    # Sample of 627 structured projects
+│   │   ├── Au_earlystage.json      # Gold early stage (131 projects)
+│   │   ├── Cu_advancedexploration.json # Copper advanced (40 projects)
+│   │   ├── Li_earlystage.json      # Lithium early stage (99 projects)
+│   │   └── U_advancedexploration.json # Uranium advanced (12 projects)
+│   ├── processed/                   # Performance metrics
+│   │   └── performance_summary.json # Real system metrics
+│   ├── examples/                    # Sample extraction results
+│   └── Canada_unique_project_names.csv # Master project list
+├── docs/                           # Technical documentation
+│   ├── methodology.md             # AI extraction methodology
+│   └── extraction-rules/          # Domain expertise and extraction logic
+│       ├── extraction-rules-core-logic.md     # Core extraction rules
+│       ├── extraction-rules-edge-cases.md     # Complex scenario handling
+│       └── README.md              # Rules documentation
+├── tools/                         # Production utility scripts
+│   ├── json_to_csv.py            # JSON to CSV conversion
+│   ├── csv_to_json_converter.py  # Reverse conversion
+│   ├── remove_duplicates.py      # Deduplication logic
+│   ├── convert_to_cad.py         # Currency standardization
+│   ├── find_missing_buyer_tickers.py # Gap analysis
+│   └── performance_analyzer.py   # Quality metrics
+└── tests/                        # Validation scripts
 ```
 
 ## 🚀 Getting Started
@@ -199,6 +218,11 @@ This project demonstrates mastery of:
 ## 📞 Contact & Discussion
 
 This portfolio represents real-world application of advanced data mining techniques, AI integration, and large-scale data processing. The system processes complex financial information with industry-leading accuracy while maintaining cost efficiency.
+
+**Contact Information:**
+- **Email**: mbessalle@gmail.com
+- **LinkedIn**: https://www.linkedin.com/in/mbessalle/
+- **Phone/WhatsApp**: +31 645 029 508
 
 **Key Differentiators:**
 - **Industry Expertise**: Deep understanding of mining sector terminology and financial structures

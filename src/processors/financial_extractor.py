@@ -2,21 +2,25 @@
 Advanced Financial Data Extraction System for Mining Industry
 
 This module demonstrates AI-powered extraction of structured financial data
-from unstructured mining industry news articles and reports.
+from unstructured mining industry news articles and reports using comprehensive
+extraction rules and validation logic.
 """
 
 import json
 import time
 import re
+import os
 from typing import Dict, List, Optional, Any
+from pathlib import Path
 from openai import OpenAI
 
 class FinancialExtractor:
     """
     AI-powered financial data extractor for mining industry articles.
     
-    Uses Google Gemini API to extract structured financial information
-    from unstructured text sources with high accuracy and validation.
+    Uses Google Gemini API with comprehensive extraction rules to extract 
+    structured financial information from unstructured text sources with 
+    high accuracy and validation.
     """
     
     def __init__(self, api_key: str = None, rate_limit: float = 1.0):
@@ -34,23 +38,135 @@ class FinancialExtractor:
         self.rate_limit = rate_limit
         self.model = "gemini-2.5-pro"
         
-    def extract_financial_data(self, text_content: str, project_name: str) -> Dict[str, Any]:
+        # Load comprehensive extraction rules
+        self.system_prompt = self._load_extraction_rules()
+        
+    def _load_extraction_rules(self) -> str:
+        """Load and combine comprehensive extraction rules into system prompt."""
+        
+        # Get the path to the extraction rules
+        current_dir = Path(__file__).parent
+        rules_dir = current_dir.parent.parent / "docs" / "extraction-rules"
+        
+        rule_files = [
+            rules_dir / "extraction-rules-core-logic.md",
+            rules_dir / "extraction-rules-edge-cases.md",
+        ]
+        
+        # Load and combine rules
+        combined_rules = ""
+        for rule_file in rule_files:
+            if rule_file.exists():
+                with open(rule_file, 'r', encoding='utf-8') as f:
+                    combined_rules += f.read() + "\n---\n"
+            else:
+                print(f"Warning: Rule file not found: {rule_file}")
+        
+        if not combined_rules:
+            # Fallback to basic rules if files not found
+            return self._get_basic_extraction_prompt()
+        
+        # Build comprehensive system prompt
+        system_prompt = f"""
+You are a meticulous data synthesis engine specializing in mining and M&A announcements.
+Your task is to analyze a collection of documents related to a single project and synthesize the information into ONE SINGLE, CONSOLIDATED JSON object.
+
+You MUST adhere to the following rules, which are composed of core logic and edge cases.
+Failure to follow these rules, especially the justification requirements, will result in an incorrect output.
+
+--- START OF COMPREHENSIVE EXTRACTION RULES ---
+{combined_rules}
+--- END OF COMPREHENSIVE EXTRACTION RULES ---
+
+Your output MUST be a single, valid JSON object that strictly conforms to the schema defined in the rules.
+Do not include any explanatory text, markdown formatting, or anything else outside of the JSON object itself.
+For every field, you must provide both a `value` and a `justification` as specified in the rules.
+
+CRITICAL REQUIREMENTS:
+1. Follow the value/justification structure for ALL fields
+2. Apply DATA RELEVANCE rules - only extract data for the specified project
+3. Handle SHARED COMMITMENTS by dividing values appropriately
+4. Use the entity resolution protocol to identify BUYER vs SELLER
+5. Follow the financial data extraction hierarchy strictly
+6. Provide detailed justifications with direct quotes from the text
+"""
+        return system_prompt
+    
+    def _get_basic_extraction_prompt(self) -> str:
+        """Fallback basic extraction prompt if rule files are not available."""
+        return """
+You are a financial data extraction expert for the mining industry.
+Extract structured financial data from mining M&A announcements.
+
+Return data in this format with value/justification pairs:
+{
+  "project_name": {"value": "string|null", "justification": "string|null"},
+  "company_name": {"value": "string|null", "justification": "string|null"},
+  "currency": {"value": "string|null", "justification": "string|null"},
+  "cash_payments_raw": {"value": "number|null", "justification": "string|null"},
+  "amount_of_shares_issued": {"value": "number|null", "justification": "string|null"},
+  "issued_share_price": {"value": "number|null", "justification": "string|null"},
+  "exploration_commitment_value_raw": {"value": "number|null", "justification": "string|null"},
+  "buyer_ticker_and_exchange": {"value": "string|null", "justification": "string|null"},
+  "interest_acquired_percent": {"value": "number|null", "justification": "string|null"},
+  "nsr_acquired_percent": {"value": "number|null", "justification": "string|null"}
+}
+
+Rules:
+- Extract only data for the specified project
+- Use direct quotes in justifications
+- Return null for missing values
+- Remove formatting from numbers
+- Use three-letter currency codes (USD, CAD, AUD)
+"""
+    
+    def extract_financial_data(self, text_content: str, project_name: str, 
+                             authoritative_metadata: Dict[str, str] = None) -> Dict[str, Any]:
         """
-        Extract structured financial data from unstructured text.
+        Extract structured financial data from unstructured text using comprehensive rules.
         
         Args:
             text_content: Raw article or document text
             project_name: Name of the mining project
+            authoritative_metadata: Additional metadata to guide extraction
             
         Returns:
-            Dictionary containing structured financial data
+            Dictionary containing structured financial data with value/justification pairs
         """
         
         # Pre-validation: Check if content contains financial indicators
         if not self._has_financial_content(text_content):
             return {"error": "No financial data detected in content"}
-            
-        prompt = self._build_extraction_prompt(text_content, project_name)
+        
+        # Build authoritative metadata block
+        auth_lines = []
+        if authoritative_metadata:
+            for key, value in authoritative_metadata.items():
+                if value and value != 'N/A':
+                    display_key = "ticker and exchange" if key in ['exchange', 'root_ticker'] else key.replace('_', ' ')
+                    auth_lines.append(f"The authoritative {display_key} for this project is **{value}**.")
+        
+        auth_block = "\n".join(auth_lines) if auth_lines else "No additional authoritative metadata provided."
+        
+        # Build user prompt with comprehensive context
+        user_prompt = f"""
+The primary project of interest for this analysis is: **{project_name.upper()}**
+
+You have been provided with the following authoritative metadata:
+{auth_block}
+
+You will now be given text content for analysis. Your task is to analyze ALL of this text to produce ONE SINGLE, CONSOLIDATED JSON output that best represents the financial details for the **{project_name.upper()}** project ONLY.
+
+REMEMBER: Follow all extraction rules, especially:
+1. DATA RELEVANCE - Only extract data for {project_name.upper()}
+2. SHARED COMMITMENTS - Divide shared values appropriately
+3. ENTITY RESOLUTION - Identify buyer vs seller correctly
+4. VALUE/JUSTIFICATION - Provide both for every field
+
+--- TEXT CONTENT START ---
+{text_content}
+--- TEXT CONTENT END ---
+"""
         
         try:
             # Apply rate limiting
@@ -59,11 +175,12 @@ class FinancialExtractor:
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a financial data extraction expert for the mining industry."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt}
                 ],
                 temperature=0.1,
-                max_tokens=1000
+                max_tokens=2000,
+                response_format={"type": "json_object"}
             )
             
             result = self._parse_response(response.choices[0].message.content)
@@ -75,8 +192,10 @@ class FinancialExtractor:
     def _has_financial_content(self, text: str) -> bool:
         """Check if text contains financial indicators worth processing."""
         financial_indicators = [
-            r'\$[\d,]+', r'CAD', r'USD', r'million', r'billion',
-            r'shares?', r'cash', r'payment', r'acquisition', r'deal'
+            r'\$[\d,]+', r'CAD', r'USD', r'AUD', r'million', r'billion',
+            r'shares?', r'cash', r'payment', r'acquisition', r'deal',
+            r'exploration', r'commitment', r'NSR', r'royalty', r'interest',
+            r'ticker', r'exchange', r'ASX', r'TSX', r'NYSE'
         ]
         
         for indicator in financial_indicators:
@@ -84,42 +203,6 @@ class FinancialExtractor:
                 return True
         return False
     
-    def _build_extraction_prompt(self, text: str, project_name: str) -> str:
-        """Build optimized prompt for financial data extraction."""
-        return f"""
-Extract financial data from this mining industry article about {project_name}.
-
-TEXT:
-{text}
-
-INSTRUCTIONS:
-1. Extract ALL financial information with precise amounts
-2. Convert currencies to consistent format (CAD/USD)
-3. Calculate aggregate deal values
-4. Identify buyer ticker symbols
-5. Return ONLY valid JSON, no explanations
-
-REQUIRED JSON FORMAT:
-{{
-  "buyer_ticker": "exchange:symbol or null",
-  "aggregate_deal": numeric_value_or_null,
-  "cash_payments": numeric_value_or_null,
-  "shares": numeric_count_or_null,
-  "share_price": numeric_value_or_null,
-  "share_value": numeric_value_or_null,
-  "exploration_commitment": numeric_value_or_null,
-  "currency": "CAD/USD",
-  "interest_acquired_percent": numeric_value_or_null,
-  "nsr_percent": numeric_value_or_null
-}}
-
-VALIDATION RULES:
-- aggregate_deal should equal sum of cash_payments + share_value + exploration_commitment
-- share_value should equal shares * share_price
-- All amounts in base currency units (not millions)
-- Return null for missing/unclear values
-"""
-
     def _parse_response(self, response_text: str) -> Dict[str, Any]:
         """Parse AI response and extract JSON data."""
         try:
@@ -136,7 +219,8 @@ VALIDATION RULES:
         """
         Validate extracted financial data for consistency and accuracy.
         
-        Implements business rules and mathematical validation.
+        Implements business rules and mathematical validation based on
+        the comprehensive extraction rules.
         """
         if "error" in data:
             return data
@@ -144,35 +228,56 @@ VALIDATION RULES:
         validated = data.copy()
         validation_errors = []
         
-        # Validate aggregate deal calculation
-        if self._is_numeric(data.get('aggregate_deal')):
-            components = [
-                data.get('cash_payments', 0) or 0,
-                data.get('share_value', 0) or 0,
-                data.get('exploration_commitment', 0) or 0
-            ]
-            expected_total = sum(components)
-            actual_total = data['aggregate_deal']
-            
-            if abs(expected_total - actual_total) > 1000:  # Allow small rounding differences
-                validation_errors.append(f"Aggregate deal mismatch: {actual_total} vs {expected_total}")
+        # Check for value/justification structure
+        for field_name, field_data in data.items():
+            if isinstance(field_data, dict):
+                if 'value' not in field_data or 'justification' not in field_data:
+                    validation_errors.append(f"Field {field_name} missing value/justification structure")
         
-        # Validate share calculations
-        if (self._is_numeric(data.get('shares')) and 
-            self._is_numeric(data.get('share_price')) and 
-            self._is_numeric(data.get('share_value'))):
+        # Validate financial calculations if values are present
+        try:
+            # Extract values from the value/justification structure
+            def get_value(field_name):
+                field_data = data.get(field_name, {})
+                if isinstance(field_data, dict):
+                    return field_data.get('value')
+                return field_data
             
-            expected_value = data['shares'] * data['share_price']
-            actual_value = data['share_value']
+            cash_payments = get_value('cash_payments_raw')
+            shares_issued = get_value('amount_of_shares_issued')
+            share_price = get_value('issued_share_price')
+            exploration_commitment = get_value('exploration_commitment_value_raw')
             
-            if abs(expected_value - actual_value) > 1000:
-                validation_errors.append(f"Share value mismatch: {actual_value} vs {expected_value}")
+            # Validate share calculations
+            if (self._is_numeric(shares_issued) and 
+                self._is_numeric(share_price)):
+                
+                expected_share_value = shares_issued * share_price
+                # Check if share_value field exists and validate
+                share_value = get_value('share_value')
+                if self._is_numeric(share_value):
+                    if abs(expected_share_value - share_value) > 1000:
+                        validation_errors.append(f"Share value calculation inconsistent: {share_value} vs expected {expected_share_value}")
+            
+            # Check for required justifications
+            for field_name, field_data in data.items():
+                if isinstance(field_data, dict):
+                    value = field_data.get('value')
+                    justification = field_data.get('justification')
+                    
+                    # If value is not null, justification should exist
+                    if value is not None and not justification:
+                        validation_errors.append(f"Field {field_name} has value but no justification")
+        
+        except Exception as e:
+            validation_errors.append(f"Validation error: {str(e)}")
         
         # Add validation summary
         validated['validation'] = {
             'is_valid': len(validation_errors) == 0,
             'errors': validation_errors,
-            'completeness_score': self._calculate_completeness(data)
+            'completeness_score': self._calculate_completeness(data),
+            'extraction_method': 'comprehensive_rules'
         }
         
         return validated
@@ -183,15 +288,27 @@ VALIDATION RULES:
     
     def _calculate_completeness(self, data: Dict[str, Any]) -> float:
         """Calculate data completeness percentage."""
-        required_fields = [
-            'buyer_ticker', 'aggregate_deal', 'cash_payments', 
-            'shares', 'share_price', 'currency'
+        
+        # Key fields for completeness calculation
+        key_fields = [
+            'project_name', 'company_name', 'currency', 'cash_payments_raw',
+            'amount_of_shares_issued', 'issued_share_price', 'exploration_commitment_value_raw',
+            'buyer_ticker_and_exchange', 'interest_acquired_percent'
         ]
         
-        completed_fields = sum(1 for field in required_fields 
-                             if data.get(field) is not None)
+        completed_fields = 0
+        total_fields = len(key_fields)
         
-        return (completed_fields / len(required_fields)) * 100
+        for field in key_fields:
+            field_data = data.get(field, {})
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+                if value is not None:
+                    completed_fields += 1
+            elif field_data is not None:
+                completed_fields += 1
+        
+        return (completed_fields / total_fields) * 100
 
 
 class DataValidator:
@@ -199,13 +316,13 @@ class DataValidator:
     Comprehensive data validation for mining industry datasets.
     
     Implements business rules, mathematical consistency checks,
-    and data quality scoring.
+    and data quality scoring based on extraction rules.
     """
     
     @staticmethod
     def validate_project_data(project_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Validate complete project dataset.
+        Validate complete project dataset against extraction rules.
         
         Args:
             project_data: Complete project financial data
@@ -221,62 +338,114 @@ class DataValidator:
             'recommendations': []
         }
         
-        # Check required fields
-        required_fields = ['Project Name', 'Buyer Ticker', 'Currency']
-        missing_fields = [field for field in required_fields 
-                         if not project_data.get(field)]
+        # Check for value/justification structure
+        for field_name, field_data in project_data.items():
+            if isinstance(field_data, dict) and 'value' in field_data:
+                value = field_data.get('value')
+                justification = field_data.get('justification')
+                
+                # Check if non-null values have justifications
+                if value is not None and not justification:
+                    results['warnings'].append(f"Field {field_name} has value but no justification")
         
-        if missing_fields:
-            results['errors'].extend([f"Missing required field: {field}" 
-                                    for field in missing_fields])
-            results['is_valid'] = False
+        # Check required fields based on extraction rules
+        required_fields = ['project_name', 'company_name', 'currency']
+        for field in required_fields:
+            field_data = project_data.get(field, {})
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+            else:
+                value = field_data
+                
+            if not value:
+                results['errors'].append(f"Missing required field: {field}")
+                results['is_valid'] = False
         
-        # Validate ticker format
-        ticker = project_data.get('Buyer Ticker')
+        # Validate ticker format if present
+        ticker_field = project_data.get('buyer_ticker_and_exchange', {})
+        if isinstance(ticker_field, dict):
+            ticker = ticker_field.get('value')
+        else:
+            ticker = ticker_field
+            
         if ticker and not re.match(r'^[A-Z-]+:[A-Z]+$', ticker):
             results['warnings'].append(f"Invalid ticker format: {ticker}")
         
         # Calculate quality score
         results['score'] = DataValidator._calculate_quality_score(project_data)
         
+        # Add recommendations
+        if results['score'] < 50:
+            results['recommendations'].append("Consider manual review due to low completeness score")
+        
+        if not results['errors'] and not results['warnings']:
+            results['recommendations'].append("Data quality is good")
+        
         return results
     
     @staticmethod
     def _calculate_quality_score(data: Dict[str, Any]) -> float:
-        """Calculate overall data quality score (0-100)."""
+        """Calculate overall data quality score (0-100) based on extraction rules."""
+        
         weights = {
-            'buyer_ticker': 0.2,
-            'aggregate_deal': 0.2,
-            'financial_breakdown': 0.3,
-            'market_data': 0.2,
-            'metadata': 0.1
+            'project_identification': 0.25,  # project_name, company_name
+            'financial_data': 0.40,          # cash, shares, commitments
+            'market_data': 0.20,             # ticker, currency, interest
+            'data_quality': 0.15             # justifications, validation
         }
         
         scores = {}
         
-        # Buyer ticker score
-        scores['buyer_ticker'] = 100 if data.get('Buyer Ticker') else 0
+        # Project identification score
+        project_fields = ['project_name', 'company_name']
+        project_score = 0
+        for field in project_fields:
+            field_data = data.get(field, {})
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+            else:
+                value = field_data
+            if value:
+                project_score += 50
+        scores['project_identification'] = project_score
         
-        # Aggregate deal score
-        scores['aggregate_deal'] = 100 if data.get(' Aggregate Deal ') else 0
-        
-        # Financial breakdown score
-        financial_fields = [' Cash Payments ', ' Shares ', ' Share Price ']
-        completed_financial = sum(1 for field in financial_fields 
-                                if data.get(field) is not None)
-        scores['financial_breakdown'] = (completed_financial / len(financial_fields)) * 100
+        # Financial data score
+        financial_fields = ['cash_payments_raw', 'amount_of_shares_issued', 'issued_share_price', 'exploration_commitment_value_raw']
+        financial_score = 0
+        for field in financial_fields:
+            field_data = data.get(field, {})
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+            else:
+                value = field_data
+            if value is not None:
+                financial_score += 25
+        scores['financial_data'] = financial_score
         
         # Market data score
-        market_fields = ['Owner Marketcap', 'Project Area Ha']
-        completed_market = sum(1 for field in market_fields 
-                             if data.get(field) is not None)
-        scores['market_data'] = (completed_market / len(market_fields)) * 100
+        market_fields = ['buyer_ticker_and_exchange', 'currency', 'interest_acquired_percent']
+        market_score = 0
+        for field in market_fields:
+            field_data = data.get(field, {})
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+            else:
+                value = field_data
+            if value is not None:
+                market_score += 33.33
+        scores['market_data'] = market_score
         
-        # Metadata score
-        metadata_fields = ['Date', 'Article Link', 'Contact/CEO']
-        completed_metadata = sum(1 for field in metadata_fields 
-                               if data.get(field) is not None)
-        scores['metadata'] = (completed_metadata / len(metadata_fields)) * 100
+        # Data quality score (based on justifications)
+        total_fields = len(data)
+        justified_fields = 0
+        for field_name, field_data in data.items():
+            if isinstance(field_data, dict):
+                value = field_data.get('value')
+                justification = field_data.get('justification')
+                if value is not None and justification:
+                    justified_fields += 1
+        
+        scores['data_quality'] = (justified_fields / total_fields * 100) if total_fields > 0 else 0
         
         # Calculate weighted average
         total_score = sum(scores[category] * weights[category] 
@@ -293,15 +462,30 @@ if __name__ == "__main__":
     project for a total consideration of $25 million. The deal comprises $10 million 
     in cash payments and 15 million shares valued at $1.00 per share. The company 
     will also commit to $5 million in exploration expenditures over the next two years.
+    
+    The Golden Eagle project covers 1,200 hectares in the Yukon Territory and contains
+    an estimated 2.5 million ounces of gold equivalent resources.
     """
     
+    # Initialize extractor with comprehensive rules
     extractor = FinancialExtractor()
-    result = extractor.extract_financial_data(sample_article, "Golden Eagle")
+    
+    # Extract financial data
+    result = extractor.extract_financial_data(
+        sample_article, 
+        "Golden Eagle",
+        authoritative_metadata={
+            'project_name': 'Golden Eagle',
+            'company_name': 'XYZ Mining Corp',
+            'exchange': 'TSX',
+            'ticker': 'XYZ'
+        }
+    )
     
     print("Extraction Result:")
     print(json.dumps(result, indent=2))
     
-    # Validation example
+    # Validate the results
     validator = DataValidator()
     validation_result = validator.validate_project_data(result)
     
